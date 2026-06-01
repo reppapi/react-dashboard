@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+:root {
+  /* Surfaces */
+  --surface: #f8f9fa;
+  --surface-dim: #d9dadb;
+  --surface-lowest: #ffffff;
+  --surface-low: #f3f4f5;
+  --surface-container: #edeeef;
+  --surface-high: #e7e8e9;
+  --surface-highest: #e1e3e4;
+  /* On Surface */
+  --on-surface: #191c1d;
+  --on-surface-variant: #414755;
+  /* Primary */
+  --primary: #0066FF;
+  --primary-container: #1A75FF;
+  --on-primary: #ffffff;
+  --primary-fixed: #d8e2ff;
+  --primary-fixed-dim: #adc6ff;
+  /* Secondary (Green) */
+  --secondary: #006e28;
+  --secondary-container: #6ffb85;
+  --on-secondary: #ffffff;
+  /* Tertiary (Purple) */
+  --tertiary: #4c4aca;
+  --tertiary-container: #6664e4;
+  --on-tertiary: #ffffff;
+  --tertiary-fixed: #e2dfff;
+  /* Error */
+  --error: #ba1a1a;
+  --error-container: #ffdad6;
+  --on-error: #ffffff;
+  /* Outline */
+  --outline: #717786;
+  --outline-variant: #c1c6d7;
+  /* Inverse */
+  --inverse-surface: #2e3132;
+  --inverse-on-surface: #f0f1f2;
+  /* Spacing */
+  --gutter: 24px;
+  --margin-mobile: 16px;
+  --margin-desktop: 40px;
+  --radius-bento: 32px;
+  --radius-inner: 16px;
+}
+
+@theme {
+  --color-surface: var(--surface);
+  --color-surface-dim: var(--surface-dim);
+  --color-surface-lowest: var(--surface-lowest);
+  --color-surface-low: var(--surface-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-high: var(--surface-high);
+  --color-surface-highest: var(--surface-highest);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-primary: var(--primary);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary: var(--on-primary);
+  --color-primary-fixed: var(--primary-fixed);
+  --color-primary-fixed-dim: var(--primary-fixed-dim);
+  --color-secondary: var(--secondary);
+  --color-secondary-container: var(--secondary-container);
+  --color-on-secondary: var(--on-secondary);
+  --color-tertiary: var(--tertiary);
+  --color-tertiary-container: var(--tertiary-container);
+  --color-on-tertiary: var(--on-tertiary);
+  --color-tertiary-fixed: var(--tertiary-fixed);
+  --color-error: var(--error);
+  --color-error-container: var(--error-container);
+  --color-on-error: var(--on-error);
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
+  --color-inverse-surface: var(--inverse-surface);
+  --color-inverse-on-surface: var(--inverse-on-surface);
+  --border-radius-bento: var(--radius-bento);
+  --border-radius-inner-panel: var(--radius-inner);
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--surface);
+  color: var(--on-surface);
+  margin: 0;
+}
+
+/* Custom styles for transitions and special assets */
+@keyframes bento-in {
+  0% { opacity: 0; transform: translateY(40px) scale(0.95); }
+  60% { opacity: 1; transform: translateY(-4px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.bento-card {
+  opacity: 0;
+  /* Smooth transition for hover effects */
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease;
+}
+
+.bento-card.visible {
+  animation: bento-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.bento-card:hover {
+  transform: translateY(-8px) scale(1.01);
+  box-shadow: 0 35px 60px -15px rgba(0, 102, 255, 0.3) !important;
+  border-color: rgba(255, 255, 255, 1) !important;
+  z-index: 10;
+}
+
+/* Staggered load delays */
+.bento-card:nth-child(1) { animation-delay: 0.05s; }
+.bento-card:nth-child(2) { animation-delay: 0.12s; }
+.bento-card:nth-child(3) { animation-delay: 0.19s; }
+.bento-card:nth-child(4) { animation-delay: 0.26s; }
+.bento-card:nth-child(5) { animation-delay: 0.33s; }
+.bento-card:nth-child(6) { animation-delay: 0.40s; }
+
+@keyframes pulse-anim {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .5; transform: scale(1.15); }
+}
+.pulse-custom {
+  animation: pulse-anim 2s infinite ease-in-out;
+}
+
+@keyframes ping-ring {
+  0% { transform: scale(.8); opacity: .7; }
+  100% { transform: scale(2); opacity: 0; }
+}
+.ping-ring-custom {
+  animation: ping-ring 1.5s cubic-bezier(0,.5,.5,1) infinite;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-high);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--outline-variant);
+}
