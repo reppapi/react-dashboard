@@ -12,14 +12,16 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [cardsVisible, setCardsVisible] = useState(false);
 
-  // ---- IoT Telemetry State ----
-  const [mqttConnected, setMqttConnected] = useState(true);
+  // ---- IoT Telemetry State (Synced with Backend) ----
+  const [mqttConnected, setMqttConnected] = useState(false);
   const [mqttPing, setMqttPing] = useState(12);
   const [battery, setBattery] = useState(85);
   const [optimizationMode, setOptimizationMode] = useState(true);
-
-  // ---- Hardware Control State ----
-  const [buzzerAlerts, setBuzzerAlerts] = useState(true);
+  const [buzzerEnabled, setBuzzerEnabled] = useState(true);
+  const [buzzerActive, setBuzzerActive] = useState(false);
+  const [activity, setActivity] = useState('Awake');
+  const [sedentaryMinutes, setSedentaryMinutes] = useState(0);
+  const [ldrValue, setLdrValue] = useState(200);
 
   // ---- Sync State ----
   const [syncing, setSyncing] = useState(false);
@@ -34,33 +36,87 @@ function App() {
     return () => clearTimeout(timer);
   }, [activePage]);
 
-  // Real-time IoT Data Stream Simulation
+  // Real-time backend status polling
+  const fetchStatus = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/status');
+      if (response.ok) {
+        const data = await response.json();
+        setMqttConnected(data.mqtt_connected);
+        setMqttPing(data.mqtt_ping);
+        setBattery(data.battery);
+        setOptimizationMode(data.optimization_mode);
+        setBuzzerActive(data.buzzer_active);
+        setActivity(data.activity);
+        setSedentaryMinutes(data.sedentary_minutes);
+        setLdrValue(data.ldr_value);
+      } else {
+        setMqttConnected(false);
+      }
+    } catch (error) {
+      console.error('Error fetching backend status:', error);
+      setMqttConnected(false);
+    }
+  };
+
   useEffect(() => {
-    const netInterval = setInterval(() => {
-      setMqttPing(Math.floor(Math.random() * 15) + 8);
-    }, 5000);
-
-    const battInterval = setInterval(() => {
-      setBattery(prev => {
-        if (Math.random() > 0.8) {
-          return Math.max(10, prev - 1);
-        }
-        return prev;
-      });
-    }, 45000);
-
-    return () => {
-      clearInterval(netInterval);
-      clearInterval(battInterval);
-    };
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 1500);
+    return () => clearInterval(interval);
   }, []);
 
-  const handleSync = () => {
+  const handleSync = async () => {
     setSyncing(true);
-    setTimeout(() => {
-      setSyncing(false);
-      setLastSyncTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
-    }, 2000);
+    try {
+      const response = await fetch('http://localhost:5000/api/sync', { method: 'POST' });
+      if (response.ok) {
+        const data = await response.json();
+        setLastSyncTime(data.time);
+      }
+    } catch (e) {
+      console.error('Sync request failed:', e);
+    } finally {
+      setTimeout(() => {
+        setSyncing(false);
+      }, 1000);
+    }
+  };
+
+  const handleToggleBuzzerEnabled = async (enabled) => {
+    setBuzzerEnabled(enabled);
+    try {
+      await fetch('http://localhost:5000/api/settings/buzzer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled })
+      });
+    } catch (e) {
+      console.error('Failed to toggle buzzer:', e);
+    }
+  };
+
+  const handleToggleOptimization = async (enabled) => {
+    setOptimizationMode(enabled);
+    try {
+      await fetch('http://localhost:5000/api/settings/optimization', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled })
+      });
+    } catch (e) {
+      console.error('Failed to toggle optimization:', e);
+    }
+  };
+
+  const handleDismissAlert = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/dismiss', { method: 'POST' });
+      if (response.ok) {
+        fetchStatus();
+      }
+    } catch (e) {
+      console.error('Dismiss failed:', e);
+    }
   };
 
   return (
@@ -93,8 +149,12 @@ function App() {
               battery={battery}
               mqttConnected={mqttConnected}
               mqttPing={mqttPing}
-              buzzerAlerts={buzzerAlerts}
-              setBuzzerAlerts={setBuzzerAlerts}
+              buzzerAlerts={buzzerEnabled}
+              setBuzzerAlerts={handleToggleBuzzerEnabled}
+              activity={activity}
+              sedentaryMinutes={sedentaryMinutes}
+              buzzerActive={buzzerActive}
+              handleDismissAlert={handleDismissAlert}
             />
           )}
           {activePage === 'health' && <HealthMetrics cardsVisible={cardsVisible} />}
@@ -103,9 +163,9 @@ function App() {
               cardsVisible={cardsVisible}
               battery={battery}
               optimizationMode={optimizationMode}
-              setOptimizationMode={setOptimizationMode}
-              buzzerAlerts={buzzerAlerts}
-              setBuzzerAlerts={setBuzzerAlerts}
+              setOptimizationMode={handleToggleOptimization}
+              buzzerAlerts={buzzerEnabled}
+              setBuzzerAlerts={handleToggleBuzzerEnabled}
             />
           )}
         </main>

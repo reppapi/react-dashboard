@@ -8,15 +8,40 @@ const TIPS = [
 
 const HealthMetrics = ({ cardsVisible }) => {
   const [tipIndex, setTipIndex] = useState(0);
+  const [sleepData, setSleepData] = useState({
+    score: 88,
+    duration_str: '7h 42m',
+    efficiency: '94%',
+    stages: { light: 55, deep: 25, rem: 20 }
+  });
 
   const nextTip = () => {
     setTipIndex((prev) => (prev + 1) % TIPS.length);
   };
 
+  React.useEffect(() => {
+    const fetchSleepAnalysis = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/sleep-analysis');
+        if (response.ok) {
+          const data = await response.json();
+          setSleepData(data);
+        }
+      } catch (e) {
+        console.error('Failed to fetch sleep analysis:', e);
+      }
+    };
+    fetchSleepAnalysis();
+  }, []);
+
+  const L = sleepData.stages.light;
+  const D = sleepData.stages.deep;
+  const R = sleepData.stages.rem;
+
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-3xl font-semibold text-on-surface tracking-tight">Sleep Architecture</h2>
+        <h2 className="text-3xl font-semibold text-on-surface tracking-tight font-sans">Sleep Architecture</h2>
         <p className="text-base text-on-surface-variant mt-1">Your physiological recovery patterns</p>
       </div>
 
@@ -30,17 +55,17 @@ const HealthMetrics = ({ cardsVisible }) => {
               <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-secondary/10 text-secondary rounded-full text-sm font-bold tracking-wider mb-6">
                 <span className="material-symbols-outlined text-[18px]">auto_awesome</span>OPTIMAL REST
               </div>
-              <div className="text-7xl font-bold tracking-tight mb-1">88<span className="text-2xl text-outline ml-1 font-semibold">/100</span></div>
+              <div className="text-7xl font-bold tracking-tight mb-1">{sleepData.score}<span className="text-2xl text-outline ml-1 font-semibold">/100</span></div>
               <p className="text-2xl font-medium text-on-surface-variant mt-2 mb-8">Sleep Quality Score</p>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-surface-low p-5 rounded-inner-panel">
                   <p className="text-sm text-on-surface-variant uppercase tracking-wider font-semibold mb-2">Duration</p>
-                  <p className="text-3xl font-bold">7h 42m</p>
+                  <p className="text-3xl font-bold">{sleepData.duration_str}</p>
                 </div>
                 <div className="bg-surface-low p-5 rounded-inner-panel">
                   <p className="text-sm text-on-surface-variant uppercase tracking-wider font-semibold mb-2">Efficiency</p>
-                  <p className="text-3xl font-bold">94%</p>
+                  <p className="text-3xl font-bold">{sleepData.efficiency}</p>
                 </div>
               </div>
             </div>
@@ -60,28 +85,29 @@ const HealthMetrics = ({ cardsVisible }) => {
             <div className="relative w-40 h-40 flex items-center justify-center flex-shrink-0">
               <svg viewBox="0 0 36 36" className="w-full h-full rotate-[-90deg]">
                 <circle cx="18" cy="18" r="15.9155" fill="none" stroke="var(--surface-high)" strokeWidth="4"/>
-                <circle cx="18" cy="18" r="15.9155" fill="none" stroke="var(--primary)" strokeWidth="4" strokeDasharray="55 100" strokeDashoffset="0" strokeLinecap="round"/>
-                <circle cx="18" cy="18" r="15.9155" fill="none" stroke="#001a41" strokeWidth="4" strokeDasharray="25 100" strokeDashoffset="-55" strokeLinecap="round"/>
-                <circle cx="18" cy="18" r="15.9155" fill="none" stroke="var(--primary-fixed-dim)" strokeWidth="4" strokeDasharray="20 100" strokeDashoffset="-80" strokeLinecap="round"/>
+                {/* Dynamic segments */}
+                <circle cx="18" cy="18" r="15.9155" fill="none" stroke="var(--primary)" strokeWidth="4" strokeDasharray={`${L} 100`} strokeDashoffset="0" strokeLinecap="round"/>
+                <circle cx="18" cy="18" r="15.9155" fill="none" stroke="#001a41" strokeWidth="4" strokeDasharray={`${D} 100`} strokeDashoffset={-L} strokeLinecap="round"/>
+                <circle cx="18" cy="18" r="15.9155" fill="none" stroke="var(--primary-fixed-dim)" strokeWidth="4" strokeDasharray={`${R} 100`} strokeDashoffset={-(L+D)} strokeLinecap="round"/>
               </svg>
               <div className="absolute flex flex-col items-center justify-center text-center">
-                <span className="text-xs text-on-surface-variant">Total</span>
-                <span className="text-xl font-bold">7.7h</span>
+                <span className="text-xs text-on-surface-variant font-medium">Total</span>
+                <span className="text-xl font-bold">{sleepData.duration_str.split(' ')[0]}</span>
               </div>
             </div>
             
             <div className="flex-1 w-full flex flex-col gap-5">
               <div className="flex justify-between items-center text-base">
                 <div className="flex items-center gap-3"><span className="w-4 h-4 rounded-full bg-primary" /><span className="text-on-surface-variant font-medium">Light Sleep</span></div>
-                <span className="font-bold">55%</span>
+                <span className="font-bold">{L}%</span>
               </div>
               <div className="flex justify-between items-center text-base">
                 <div className="flex items-center gap-3"><span className="w-4 h-4 rounded-full bg-[#001a41]" /><span className="text-on-surface-variant font-medium">Deep Sleep</span></div>
-                <span className="font-bold">25%</span>
+                <span className="font-bold">{D}%</span>
               </div>
               <div className="flex justify-between items-center text-base">
                 <div className="flex items-center gap-3"><span className="w-4 h-4 rounded-full bg-primary-fixed-dim" /><span className="text-on-surface-variant font-medium">REM</span></div>
-                <span className="font-bold">20%</span>
+                <span className="font-bold">{R}%</span>
               </div>
             </div>
           </div>
