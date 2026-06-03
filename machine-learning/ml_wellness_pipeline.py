@@ -7,6 +7,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score
+# pyrefly: ignore [missing-import]
 import joblib, json, warnings
 warnings.filterwarnings('ignore')
 
@@ -58,7 +59,6 @@ def extract_features(segment):
         features[f'{ax}_skew'] = float(pd.Series(v).skew())
         features[f'{ax}_kurt'] = float(pd.Series(v).kurtosis())
     
-    acc_m = np.sqrt(sampled['Ax'][:1].values[0]**2)  # placeholder, will fix below
     Ax = segment['Ax'].values.astype(float)
     Ay = segment['Ay'].values.astype(float)
     Az = segment['Az'].values.astype(float)

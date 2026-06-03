@@ -4,6 +4,7 @@ import TopBar from './components/layout/TopBar';
 import BottomNav from './components/layout/BottomNav';
 import Dashboard from './components/pages/Dashboard';
 import HealthMetrics from './components/pages/HealthMetrics';
+import ActivityHistory from './components/pages/ActivityHistory';
 import Devices from './components/pages/Devices';
 
 function App() {
@@ -158,6 +159,7 @@ function App() {
             />
           )}
           {activePage === 'health' && <HealthMetrics cardsVisible={cardsVisible} />}
+          {activePage === 'history' && <ActivityHistory cardsVisible={cardsVisible} />}
           {activePage === 'devices' && (
             <Devices 
               cardsVisible={cardsVisible}

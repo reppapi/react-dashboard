@@ -35,8 +35,29 @@ const Devices = ({
             </div>
           </div>
 
-          <div className="w-72 h-72 flex items-center justify-center relative z-10 select-none mr-4 md:mr-10">
-            <img src="/src/assets/images/badge.png" alt="PulseBadge Pro 3D" className="w-full h-full object-contain filter drop-shadow-[0_20px_32px_rgba(0,0,0,0.15)] pulse-custom scale-125" />
+          {/* Badge Visual — SVG inline (no missing image) */}
+          <div className="w-64 h-64 flex items-center justify-center relative z-10 select-none mr-4 md:mr-10 pulse-custom">
+            <div className="relative w-48 h-60 flex items-center justify-center">
+              {/* Badge outer shape */}
+              <div className="absolute inset-0 rounded-[28px] bg-gradient-to-br from-[#1a75ff] via-[#0055cc] to-[#003a99] shadow-[0_20px_60px_-10px_rgba(0,102,255,0.6)]" />
+              {/* Clip at top (badge pin area) */}
+              <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-gradient-to-b from-[#c0c8d8] to-[#8090a8] shadow-md border-2 border-white/30" />
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-5 bg-gradient-to-b from-[#b0bcc8] to-[#8090a8]" />
+              {/* Screen/display area */}
+              <div className="relative z-10 flex flex-col items-center justify-center gap-2 px-4 w-full">
+                <div className="w-full h-16 rounded-xl bg-black/30 border border-white/10 flex items-center justify-center mb-1">
+                  <span className="material-symbols-outlined text-[#4da6ff] text-4xl">monitoring</span>
+                </div>
+                <div className="text-white font-bold text-base tracking-wide">PulseBadge</div>
+                <div className="flex gap-2 mt-1">
+                  <div className="w-2 h-2 rounded-full bg-[#6ffb85] animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-[#4da6ff]" />
+                  <div className="w-2 h-2 rounded-full bg-[#c084fc]" />
+                </div>
+              </div>
+              {/* Gloss overlay */}
+              <div className="absolute inset-0 rounded-[28px] bg-gradient-to-br from-white/20 to-transparent pointer-events-none" />
+            </div>
           </div>
         </div>
 

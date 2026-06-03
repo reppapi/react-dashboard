@@ -4,6 +4,7 @@ const Sidebar = ({ activePage, setActivePage, sidebarOpen, setSidebarOpen, handl
   const navLinks = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     { id: 'health', label: 'Health Metrics', icon: 'monitor_heart' },
+    { id: 'history', label: 'Activity History', icon: 'history' },
     { id: 'devices', label: 'Device Status', icon: 'sensors' }
   ];
 

@@ -2,9 +2,10 @@ import React from 'react';
 
 const BottomNav = ({ activePage, setActivePage }) => {
   const navLinks = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', shortLabel: 'Dashboard' },
+    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', shortLabel: 'Home' },
     { id: 'health', label: 'Health Metrics', icon: 'monitor_heart', shortLabel: 'Vitals' },
-    { id: 'devices', label: 'Device Status', icon: 'sensors', shortLabel: 'Devices' }
+    { id: 'history', label: 'Activity History', icon: 'history', shortLabel: 'History' },
+    { id: 'devices', label: 'Device Status', icon: 'sensors', shortLabel: 'Device' }
   ];
 
   return (
