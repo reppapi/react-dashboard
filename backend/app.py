@@ -227,6 +227,11 @@ def get_current():
     finally:
         session.close()
 
+
+@app.route('/api/status', methods=['GET'])
+def get_status():
+    return get_current()
+
 @app.route('/api/dismiss', methods=['POST'])
 def dismiss_alert():
     session = SessionLocal()
@@ -303,6 +308,11 @@ def get_history():
         return jsonify(history_list)
     finally:
         session.close()
+
+
+@app.route('/api/history', methods=['GET'])
+def get_history_legacy():
+    return get_history()
 
 @app.route('/api/sleep-analysis', methods=['GET'])
 def get_sleep_analysis():
