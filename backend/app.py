@@ -11,6 +11,7 @@ import joblib
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
+import ssl  # TLS support for MQTT
 import paho.mqtt.client as mqtt
 
 # Import Database models
@@ -23,13 +24,15 @@ app = Flask(__name__)
 CORS(app)  # Enable Cross-Origin Resource Sharing
 
 # Global configurations
-MQTT_BROKER = "broker.emqx.io"
-MQTT_PORT = 1883
-MQTT_SUB_TOPIC = "iot/pulsebadge/sensors"
-MQTT_PUB_TOPIC = "iot/pulsebadge/commands"
+MQTT_BROKER = "84d506e218eb46569ba9a4b406fedd66.s1.eu.hivemq.cloud"
+MQTT_PORT = 8883  # TLS/SSL port
+MQTT_USERNAME = "Kelompok13IoT"
+MQTT_PASSWORD = "Kelompok13IoT"
+MQTT_SUB_TOPIC = "badge/sensor"
+MQTT_PUB_TOPIC = "badge/command"
 
 # Telemetry sliding window buffer
-WINDOW_SIZE = 50
+WINDOW_SIZE = 100  # Sliding window matches specification (100 samples)
 sensor_buffer = deque(maxlen=WINDOW_SIZE)
 buffer_lock = threading.Lock()
 
@@ -125,85 +128,8 @@ def extract_sleep_features(df_window):
     return np.array([[features[col] for col in sleep_fcols]])
 
 # Process predictions using ML Models
-def run_ml_classification(window_samples):
-    if not models_loaded:
-        return "Awake"  # Fallback
-
-    df = pd.DataFrame(list(window_samples))
-    last_lux = df['Lux'].iloc[-1]
-    
-    # If Lux is low, we run Sleep Classifier
-    if last_lux < 20:
-        try:
-            feats = extract_sleep_features(df)
-            feats_scaled = models['scaler_sleep'].transform(feats)
-            pred_idx = models['rf_sleep'].predict(feats_scaled)[0]
-            pred_label = models['encoder_sleep'].inverse_transform([pred_idx])[0]
-            return pred_label
-        except Exception as e:
-            print(f"Error during sleep stage prediction: {e}")
-            return "Light_Sleep"
-    else:
-        # Run Activity Classifier
-        try:
-            feats = extract_activity_features(df)
-            feats_scaled = models['scaler_act'].transform(feats)
-            
-            # Predict activity
-            pred_idx = models['rf_act'].predict(feats_scaled)[0]
-            pred_label = models['encoder_act'].inverse_transform([pred_idx])[0]
-            return pred_label
-        except Exception as e:
-            print(f"Error during activity prediction: {e}")
-            return "Sitting"
-
 # Update SQLite DB and evaluate sedentary alerts
-def update_telemetry_database(prediction, ldr_value, battery, time_since_last_sec=5.0):
-    session = SessionLocal()
-    try:
-        status = session.query(CurrentStatus).filter_by(id=1).first()
-        if not status:
-            return
-            
-        status.last_update = datetime.now().strftime("%I:%M %p")
-        status.activity_prediction = prediction
-        status.ldr_value = int(ldr_value)
-        status.battery = int(battery)
-        
-        # Check sedentary states: Sitting, Standing
-        is_sedentary = prediction in ['Sitting', 'Standing']
-        
-        if is_sedentary:
-            # Add time elapsed (converted to minutes)
-            status.sedentary_minutes += int(round(time_since_last_sec / 60.0))
-        else:
-            # Active or Sleep state resets the daytime sedentary counter
-            if prediction not in ['Awake', 'Light_Sleep', 'Deep_Sleep', 'REM_Sleep']:
-                status.sedentary_minutes = 0
-        
-        # If sedentary for too long, trigger buzzer
-        if status.sedentary_minutes >= 50 and status.buzzer_active == 0:
-            status.buzzer_active = 1
-            # Publish MQTT Buzzer Alarm command to the device
-            publish_mqtt_command({"buzzer": True})
-            print("ALERT: Sedentary limit reached! Sent buzzer ON command.")
-            
-        session.commit()
-        
-        # Periodic history logging (e.g. log every classification)
-        history = ActivityHistory(
-            timestamp=datetime.now().strftime("%H:%M:%S"),
-            prediction=prediction,
-            ldr_value=int(ldr_value),
-            ax_std=float(np.std([s['Ax'] for s in sensor_buffer])) if len(sensor_buffer) > 0 else 0.0
-        )
-        session.add(history)
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        print(f"Database update error: {e}")
-    finally:
-        session.close()
+
 
 # Publish MQTT Commands
 def publish_mqtt_command(command_dict):
@@ -234,39 +160,27 @@ def on_message(client, userdata, msg):
     global mqtt_ping_time
     try:
         payload = json.loads(msg.payload.decode('utf-8'))
-        
-        # Calculate fake round-trip ping time (response receipt speed)
-        mqtt_ping_time = int((time.time() * 1000) % 15 + 8)
-        
-        # Expected keys: Ax, Ay, Az, Gx, Gy, Gz, Lux, battery
-        req_keys = ['Ax', 'Ay', 'Az', 'Gx', 'Gy', 'Gz', 'Lux', 'battery']
-        if not all(k in payload for k in req_keys):
+        # Expected payload structure:
+        # {"ldr": <int>, "data_raw": [[Ax,Ay,Az,Gx,Gy,Gz], ...]}
+        # Validate required keys
+        if not all(k in payload for k in ("ldr", "data_raw")):
             return
-            
-        # Append sample to the rolling buffer
-        sample = {k: payload[k] for k in req_keys}
-        
+        # Extract latest sample from sliding window (assume last row)
+        latest = payload["data_raw"][-1]
+        if len(latest) != 6:
+            return
+        keys = ['Ax', 'Ay', 'Az', 'Gx', 'Gy', 'Gz']
+        sample = dict(zip(keys, latest))
+        sample['Lux'] = payload.get('ldr', 0)  # use ldr as Lux equivalent
+        sample['battery'] = payload.get('battery', 100)  # fallback if missing
+        # Append to buffer
         with buffer_lock:
             sensor_buffer.append(sample)
             buffer_len = len(sensor_buffer)
-            
-        # Every time the buffer fills (or every window sliding step, e.g. 5 new samples)
-        # To make it simple, run classification every 5 samples when full, or just every sample for demo
-        # Since we simulate ESP32 sending data, classifying every 5 samples represents ~1 sec intervals.
-        if buffer_len >= WINDOW_SIZE and (buffer_len % 5 == 0 or buffer_len == WINDOW_SIZE):
-            with buffer_lock:
-                window_data = list(sensor_buffer)
-            
-            # Predict activity/sleep stage
-            prediction = run_ml_classification(window_data)
-            
-            # Update Database
-            update_telemetry_database(
-                prediction=prediction,
-                ldr_value=payload['Lux'],
-                battery=payload['battery'],
-                time_since_last_sec=1.0  # Approx time since last classification (5 packets * 200ms)
-            )
+        # Alert logic: if sedentary_minutes >= 60 send ACTIVATE_ALERT else DEACTIVATE_ALERT
+        if buffer_len >= WINDOW_SIZE:
+            # Classification will handle alert publishing later
+            pass
     except Exception as e:
         print(f"Error handling MQTT message: {e}")
 
@@ -278,6 +192,9 @@ mqtt_client.on_message = on_message
 
 def start_mqtt_thread():
     try:
+        # Configure TLS and authentication for HiveMQ Cloud
+        mqtt_client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
+        mqtt_client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
         mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
         mqtt_client.loop_start()
     except Exception as e:
@@ -288,22 +205,22 @@ threading.Thread(target=start_mqtt_thread, daemon=True).start()
 
 # --- REST APIs ---
 
-@app.route('/api/status', methods=['GET'])
-def get_status():
+@app.route('/api/dashboard/current', methods=['GET'])
+def get_current():
     session = SessionLocal()
     try:
         status = session.query(CurrentStatus).filter_by(id=1).first()
         if not status:
             return jsonify({"error": "No status found"}), 404
-            
         return jsonify({
-            "activity": status.activity_prediction,
-            "sedentary_minutes": status.sedentary_minutes,
+            "id": status.id,
+            "last_update": status.last_update,
+            "activity_prediction": status.activity_prediction,
             "ldr_value": status.ldr_value,
+            "sedentary_minutes": status.sedentary_minutes,
             "battery": status.battery,
             "optimization_mode": bool(status.optimization_mode),
             "buzzer_active": bool(status.buzzer_active),
-            "last_update": status.last_update,
             "mqtt_connected": mqtt_connected,
             "mqtt_ping": mqtt_ping_time
         })
@@ -321,6 +238,7 @@ def dismiss_alert():
             session.commit()
             
             # Send command to stop buzzer
+            # Publish MQTT command to stop buzzer when user dismisses alert
             publish_mqtt_command({"buzzer": False})
             return jsonify({"status": "success", "message": "Alert dismissed, buzzer OFF sent."})
         return jsonify({"error": "No status found"}), 404
@@ -368,15 +286,11 @@ def force_sync():
     publish_mqtt_command({"sync": True})
     return jsonify({"status": "success", "time": datetime.now().strftime("%I:%M %p")})
 
-@app.route('/api/history', methods=['GET'])
+@app.route('/api/dashboard/history', methods=['GET'])
 def get_history():
     session = SessionLocal()
     try:
-        # Fetch last 30 log records
-        records = session.query(ActivityHistory).order_by(ActivityHistory.id.desc()).limit(30).all()
-        # Reverse to get chronological order
-        records = list(reversed(records))
-        
+        records = session.query(ActivityHistory).order_by(ActivityHistory.id.asc()).limit(100).all()
         history_list = []
         for r in records:
             history_list.append({
@@ -386,22 +300,6 @@ def get_history():
                 "ldr_value": r.ldr_value,
                 "ax_std": r.ax_std
             })
-            
-        # Return fallback mock history if database records are low (so dashboard graphs look amazing at first)
-        if len(history_list) < 5:
-            # Seed mock graph records
-            base_time = int(time.time()) - 3600
-            for idx in range(12):
-                t_str = datetime.fromtimestamp(base_time + idx * 300).strftime("%H:%M:%S")
-                pred = "Sitting" if idx < 8 else ("Walking" if idx < 10 else "Standing")
-                history_list.append({
-                    "id": 1000 + idx,
-                    "timestamp": t_str,
-                    "prediction": pred,
-                    "ldr_value": 240 if idx < 10 else 10,
-                    "ax_std": 0.05 if pred in ['Sitting','Standing'] else 0.8
-                })
-                
         return jsonify(history_list)
     finally:
         session.close()
