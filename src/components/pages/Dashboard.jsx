@@ -7,7 +7,8 @@ const Dashboard = ({
   mqttPing, 
   buzzerAlerts, 
   setBuzzerAlerts,
-  activity = 'Awake',
+      activity = 'Awake',
+    qualityScore = null,
   sedentaryMinutes = 0,
   buzzerActive = false,
   handleDismissAlert
@@ -127,7 +128,16 @@ const Dashboard = ({
         </div>
       </div>
 
-      {/* Device Battery Tile */}
+       {/* Quality Score Tile */}
+       <div className={`bento-card col-span-4 md:col-span-6 p-6 bg-surface-lowest/80 backdrop-blur-xl rounded-bento shadow-[0_16px_40px_-12px_rgba(0,102,255,0.15)] border-[1.5px] border-white flex flex-col justify-between min-h-[200px] ${cardsVisible ? 'visible' : ''}`}>
+         <div className="flex justify-between items-start">
+           <h4 className="text-lg font-medium">Wellness Score</h4>
+           <span className="material-symbols-outlined text-primary text-2xl">insights</span>
+         </div>
+         <div className="mt-4 text-3xl md:text-4xl font-bold text-primary">{qualityScore !== null ? qualityScore.toFixed(1) : '--'}</div>
+         <p className="text-sm text-on-surface-variant mt-2">Predicted sleep quality (0-100)</p>
+       </div>
+       {/* Device Battery Tile */}
       <div className={`bento-card col-span-4 md:col-span-6 p-6 bg-surface-lowest/80 backdrop-blur-xl rounded-bento shadow-[0_16px_40px_-12px_rgba(0,102,255,0.15)] border-[1.5px] border-white flex flex-col justify-between min-h-[200px] ${cardsVisible ? 'visible' : ''}`}>
         <div className="flex justify-between items-start">
           <h4 className="text-lg font-medium">Device Battery</h4>

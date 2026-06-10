@@ -16,7 +16,7 @@ function App() {
   // ---- IoT Telemetry State (Synced with Backend) ----
   const [mqttConnected, setMqttConnected] = useState(false);
   const [mqttPing, setMqttPing] = useState(12);
-  const [battery, setBattery] = useState(85);
+  const [qualityScore, setQualityScore] = useState(null);
   const [optimizationMode, setOptimizationMode] = useState(true);
   const [buzzerEnabled, setBuzzerEnabled] = useState(true);
   const [buzzerActive, setBuzzerActive] = useState(false);
@@ -38,7 +38,17 @@ function App() {
   }, [activePage]);
 
   // Real-time backend status polling
-  const fetchStatus = async () => {
+  const fetchQuality = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/quality');
+      if (response.ok) {
+        const data = await response.json();
+        setQualityScore(data.quality_score);
+      }
+    } catch (error) {
+      console.error('Error fetching quality score:', error);
+    }
+  };
     try {
       const response = await fetch('http://localhost:5000/api/status');
       if (response.ok) {
@@ -62,7 +72,8 @@ function App() {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 1500);
+    fetchQuality();
+    const interval = setInterval(() => { fetchStatus(); fetchQuality(); }, 1500);
     return () => clearInterval(interval);
   }, []);
 
@@ -156,6 +167,7 @@ function App() {
               sedentaryMinutes={sedentaryMinutes}
               buzzerActive={buzzerActive}
               handleDismissAlert={handleDismissAlert}
+              qualityScore={qualityScore}
             />
           )}
           {activePage === 'health' && <HealthMetrics cardsVisible={cardsVisible} />}
